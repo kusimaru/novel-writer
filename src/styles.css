@@ -428,6 +428,91 @@ button {
   color: var(--muted);
   margin-bottom: 4px;
   font-family: var(--ui-font);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chapter-input {
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  min-width: 3em;
+  max-width: 100%;
+}
+
+.chapter-input:hover,
+.chapter-input:focus {
+  border-bottom-color: var(--line);
+}
+
+.chapter-input:focus {
+  border-bottom-color: var(--accent);
+  color: var(--ink);
+}
+
+.subtitle-add.inline {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+}
+
+/* ---------- search bar ---------- */
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #faf9f5;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.searchbar input.text {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+  width: 200px;
+  max-width: 40vw;
+  background: var(--paper);
+}
+
+.searchbar input.text:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.search-count {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 3em;
+  font-variant-numeric: tabular-nums;
+}
+
+.searchbar select {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: var(--paper);
+}
+
+.grow-mirror mark.hl {
+  background: rgba(255, 213, 0, 0.45);
+  color: transparent;
+  border-radius: 2px;
+}
+
+.grow-mirror mark.hl.cur {
+  background: rgba(255, 140, 0, 0.6);
+  box-shadow: 0 0 0 1px rgba(200, 90, 0, 0.7);
 }
 
 .page-title {

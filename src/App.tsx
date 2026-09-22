@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Editor from './components/Editor'
 import MemoDrawer from './components/MemoDrawer'
+import SearchBar from './components/SearchBar'
 import SettingsDialog from './components/SettingsDialog'
 import Sidebar from './components/Sidebar'
 import StatusBar from './components/StatusBar'
@@ -23,6 +24,18 @@ export default function App() {
       if (s.settings.syncProvider !== 'none') void applySyncSettings(s.settings)
     })
   }, [load])
+
+  // Ctrl+F / Ctrl+H で検索・置換を開く
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h')) {
+        e.preventDefault()
+        useStore.getState().setSearch({ open: true })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // 引き出しの幅をドラッグで変更
   const onResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -50,6 +63,7 @@ export default function App() {
   return (
     <div className={'app' + (settings.drawerOpen ? ' drawer-open' : '') + (settings.sidebarOpen ? ' sidebar-open' : '')}>
       <TopBar onOpenSettings={() => setShowSettings(true)} />
+      <SearchBar />
       <div className="body">
         <Sidebar />
         <div className="sidebar-backdrop" onClick={() => setSettings({ sidebarOpen: false })} />

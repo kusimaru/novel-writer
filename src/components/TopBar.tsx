@@ -20,6 +20,8 @@ export default function TopBar({ onOpenSettings }: { onOpenSettings: () => void 
   const syncMessage = useStore((s) => s.syncMessage)
   const chapters = useStore((s) => s.chapters)
   const episodes = useStore((s) => s.episodes)
+  const searchOpen = useStore((s) => s.search.open)
+  const setSearch = useStore((s) => s.setSearch)
 
   return (
     <header className="topbar">
@@ -36,6 +38,13 @@ export default function TopBar({ onOpenSettings }: { onOpenSettings: () => void 
         {project?.subtitle && <span className="project-subtitle-top">{project.subtitle}</span>}
       </span>
       <span className="spacer" />
+      <button
+        className={'btn tool' + (searchOpen ? ' on' : '')}
+        title="検索と置換(Ctrl+F)"
+        onClick={() => setSearch({ open: !searchOpen })}
+      >
+        🔍 検索・置換
+      </button>
       <button
         className={'btn tool' + (settings.showInvisibles ? ' on' : '')}
         title="全角・半角スペースや改行の記号を表示する"

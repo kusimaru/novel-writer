@@ -57,8 +57,20 @@ export interface ExportData {
   memos: Memo[]
 }
 
+export interface SearchState {
+  open: boolean
+  query: string
+  replace: string
+  scope: 'episode' | 'project'
+  caseSensitive: boolean
+  current: number // 現在の話の中での一致番号
+  nonce: number // 同じ番号でも再選択させたいとき用
+}
+
 export interface AppState {
   loaded: boolean
+  search: SearchState
+  setSearch: (patch: Partial<SearchState>) => void
   projects: Record<string, Project>
   chapters: Record<string, Chapter>
   episodes: Record<string, Episode>
@@ -103,6 +115,8 @@ export const useStore = create<AppState>((set, get) => ({
   settings: defaultSettings,
   syncStatus: 'off',
   syncMessage: '',
+  search: { open: false, query: '', replace: '', scope: 'episode', caseSensitive: false, current: 0, nonce: 0 },
+  setSearch: (patch) => set((s) => ({ search: { ...s.search, ...patch } })),
 
   load: async () => {
     const [projects, chapters, episodes, memos, settingsRow] = await Promise.all([
