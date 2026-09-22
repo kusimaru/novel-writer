@@ -31,7 +31,10 @@ export default function TopBar({ onOpenSettings }: { onOpenSettings: () => void 
         ☰
       </button>
       <span className="app-name">執筆ノート</span>
-      <span className="project-title">{project?.title ?? ''}</span>
+      <span className="project-title">
+        {project?.title ?? ''}
+        {project?.subtitle && <span className="project-subtitle-top">{project.subtitle}</span>}
+      </span>
       <span className="spacer" />
       <button
         className={'btn tool' + (settings.showInvisibles ? ' on' : '')}

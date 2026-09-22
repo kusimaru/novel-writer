@@ -20,7 +20,7 @@ export const timestamp = () => {
 
 /** 作品全体を1つのテキストにまとめる */
 export function projectToText(project: Project, chapters: Record<string, Chapter>, episodes: Record<string, Episode>): string {
-  const lines: string[] = [project.title, '']
+  const lines: string[] = project.subtitle ? [project.title, project.subtitle, ''] : [project.title, '']
   for (const chId of project.chapterOrder) {
     const ch = chapters[chId]
     if (!ch) continue

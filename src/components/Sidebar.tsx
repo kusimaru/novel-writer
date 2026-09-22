@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { selectCurrentProject, useStore } from '../store'
 import { countChars, formatNumber } from '../utils/count'
 import Menu from './Menu'
@@ -9,6 +10,12 @@ export default function Sidebar() {
   const episodes = useStore((s) => s.episodes)
   const settings = useStore((s) => s.settings)
   const st = useStore()
+  const [editingSub, setEditingSub] = useState(false)
+  const subRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (editingSub) subRef.current?.focus()
+  }, [editingSub])
+  useEffect(() => setEditingSub(false), [project?.id])
 
   const selectEpisode = (id: string) => {
     st.setSettings({ currentEpisodeId: id, ...(window.innerWidth < 900 ? { sidebarOpen: false } : {}) })
@@ -64,6 +71,23 @@ export default function Sidebar() {
           ]}
         />
       </div>
+      {project && (
+        <div className="sidebar-sub">
+          {project.subtitle || editingSub ? (
+            <input
+              ref={subRef}
+              value={project.subtitle ?? ''}
+              placeholder="作品のサブタイトル"
+              onChange={(e) => st.updateProject(project.id, { subtitle: e.target.value })}
+              onBlur={() => setEditingSub(false)}
+            />
+          ) : (
+            <button className="subtitle-add" onClick={() => setEditingSub(true)}>
+              ＋ 作品のサブタイトルを追加
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="tree">
         {project?.chapterOrder.map((chId, ci) => {

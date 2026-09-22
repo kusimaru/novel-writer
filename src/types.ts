@@ -14,6 +14,7 @@ export interface Stroke {
 export interface Project {
   id: string
   title: string
+  subtitle?: string
   chapterOrder: string[]
   createdAt: number
   updatedAt: number
