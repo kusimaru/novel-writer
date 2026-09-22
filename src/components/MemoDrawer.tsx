@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { selectCurrentEpisode, selectCurrentProject, useStore } from '../store'
 import type { Episode, Memo } from '../types'
 import HandwritingCanvas, { type PenMode } from './HandwritingCanvas'
+import Menu from './Menu'
 
 const COLORS = ['#2b2a28', '#c0392b', '#1f5fbf', '#1e8449', '#8e44ad', '#e67e22']
 
@@ -47,17 +48,23 @@ export default function MemoDrawer() {
     return out
   }, [project, chapters, episodes, projectMemos])
 
-  // メモ欄を開いたとき、この話にメモが1枚もなければ自動で作る
+  const commonMemos = useMemo(() => projectMemos.filter((m) => !m.episodeId || !episodes[m.episodeId]).sort(byOrder), [projectMemos, episodes])
+  const [showCommon, setShowCommon] = useState(false)
+
+  // メモ欄を開いたとき・話を切り替えたとき、その話にメモが1枚もなければ自動で作る
+  // (メモを移動・削除して空になっただけでは作らない)
   const autoCreated = useRef<string | null>(null)
+  const episodeId = episode?.id
+  const projectId = project?.id
   useEffect(() => {
-    if (!settings.drawerOpen || !project || !episode || view !== 'episode') return
-    if (list.length > 0 || autoCreated.current === episode.id) return
-    // StrictMode などで effect が二重に走っても重複して作らないよう、直前に最新の状態で再確認
-    const exists = Object.values(useStore.getState().memos).some((m) => m.episodeId === episode.id)
+    if (!settings.drawerOpen || !projectId || !episodeId || view !== 'episode') return
+    if (autoCreated.current === episodeId) return
+    // StrictMode などで effect が二重に走っても重複して作らないよう、最新の状態で確認
+    const exists = Object.values(useStore.getState().memos).some((m) => m.episodeId === episodeId && !m.deleted)
     if (exists) return
-    autoCreated.current = episode.id
-    createMemo(project.id, episode.id)
-  }, [settings.drawerOpen, project, episode, list.length, createMemo, view])
+    autoCreated.current = episodeId
+    createMemo(projectId, episodeId)
+  }, [settings.drawerOpen, projectId, episodeId, createMemo, view])
 
   const totalCount = projectMemos.length
 
@@ -134,6 +141,15 @@ export default function MemoDrawer() {
           {list.map((m) => (
             <MemoCard key={m.id} memo={m} mode={mode} />
           ))}
+          {commonMemos.length > 0 && (
+            <section className="memo-group common">
+              <button className="memo-group-head static" onClick={() => setShowCommon((v) => !v)} title="どの話にも属さないメモ">
+                {showCommon ? '▾' : '▸'} 作品共通のメモ
+                <span className="count">{commonMemos.length}</span>
+              </button>
+              {showCommon && commonMemos.map((m) => <MemoCard key={m.id} memo={m} mode={mode} />)}
+            </section>
+          )}
         </div>
       ) : (
         <div className="memo-list">
@@ -168,6 +184,14 @@ function MemoCard({ memo, mode }: { memo: Memo; mode: PenMode }) {
   const settings = useStore((s) => s.settings)
   const updateMemo = useStore((s) => s.updateMemo)
   const deleteMemo = useStore((s) => s.deleteMemo)
+  const moveMemo = useStore((s) => s.moveMemo)
+  const episode = useStore(selectCurrentEpisode)
+  const project = useStore(selectCurrentProject)
+  const chapters = useStore((s) => s.chapters)
+  const episodes = useStore((s) => s.episodes)
+  const [picking, setPicking] = useState(false)
+  const isCommon = !memo.episodeId || !episodes[memo.episodeId]
+  const isCurrent = !!episode && memo.episodeId === episode.id
   const bodyRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
   const [collapsed, setCollapsed] = useState(false)
@@ -224,16 +248,58 @@ function MemoCard({ memo, mode }: { memo: Memo; mode: PenMode }) {
             ↶
           </button>
         )}
-        <button
-          className="icon-btn"
-          title="メモを削除"
-          onClick={() => {
-            if (window.confirm('このメモを削除しますか?')) deleteMemo(memo.id)
-          }}
-        >
-          🗑
-        </button>
+        <Menu
+          items={[
+            { label: 'この話のメモにする', disabled: !episode || isCurrent, onClick: () => episode && moveMemo(memo.id, episode.id) },
+            { label: '作品共通にする', disabled: isCommon, onClick: () => moveMemo(memo.id, undefined) },
+            { label: '別の話へ移す…', onClick: () => setPicking(true) },
+            {
+              label: 'メモを削除',
+              danger: true,
+              onClick: () => {
+                if (window.confirm('このメモを削除しますか?')) deleteMemo(memo.id)
+              }
+            }
+          ]}
+        />
       </div>
+      {picking && project && (
+        <div className="memo-move">
+          <span>移動先:</span>
+          <select
+            autoFocus
+            defaultValue={isCommon ? '' : memo.episodeId}
+            onChange={(e) => {
+              moveMemo(memo.id, e.target.value || undefined)
+              setPicking(false)
+            }}
+          >
+            <option value="">作品共通(話に属さない)</option>
+            {project.chapterOrder.map((cid) => {
+              const ch = chapters[cid]
+              if (!ch) return null
+              return (
+                <optgroup key={cid} label={ch.title}>
+                  {ch.episodeOrder.map((eid) => {
+                    const ep = episodes[eid]
+                    return ep ? (
+                      <option key={eid} value={eid}>
+                        {epLabel(ep)}
+                      </option>
+                    ) : null
+                  })}
+                </optgroup>
+              )
+            })}
+          </select>
+          <button className="icon-btn" onClick={() => setPicking(false)} aria-label="やめる">
+            ✕
+          </button>
+        </div>
+      )}
+      {isCommon && (
+        <div className="memo-common-note">作品共通のメモ(どの話にも属していません)</div>
+      )}
       {!collapsed && (
         <>
           <div className="memo-body" ref={bodyRef} style={{ minHeight: memo.height }}>

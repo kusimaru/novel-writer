@@ -100,6 +100,8 @@ export interface AppState {
   createMemo: (projectId: string, episodeId?: string) => string
   updateMemo: (id: string, patch: Partial<Memo>) => void
   deleteMemo: (id: string) => void
+  /** メモを別の話(または作品共通 = undefined)へ移す */
+  moveMemo: (id: string, episodeId: string | undefined) => void
 
   applyRemote: (kind: EntityKind, entity: Entity) => void
   exportData: () => Promise<ExportData>
@@ -324,6 +326,14 @@ export const useStore = create<AppState>((set, get) => ({
     delete rest[id]
     set({ memos: rest })
     persist('memo', { ...m, deleted: true, updatedAt: now() })
+  },
+
+  moveMemo: (id, episodeId) => {
+    const m = get().memos[id]
+    if (!m) return
+    const siblings = Object.values(get().memos).filter((x) => x.projectId === m.projectId && (x.episodeId ?? '') === (episodeId ?? '') && x.id !== id)
+    const order = siblings.reduce((mx, x) => Math.max(mx, x.order), -1) + 1
+    get().updateMemo(id, { episodeId, order })
   },
 
   applyRemote: (kind, entity) => {
