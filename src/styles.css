@@ -469,6 +469,44 @@ button {
   color: #b9b6ad;
 }
 
+.page-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 3em;
+  padding-top: 1.2em;
+  border-top: 1px solid var(--line);
+  font-family: var(--ui-font);
+}
+
+.nav-btn {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--ink);
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.nav-btn.next {
+  margin-left: auto;
+}
+
+.nav-btn.add {
+  color: var(--muted);
+  border-style: dashed;
+}
+
 /* ---------- drawer (memo) ---------- */
 .drawer {
   position: relative;
