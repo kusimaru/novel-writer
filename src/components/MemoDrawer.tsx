@@ -21,6 +21,15 @@ export default function MemoDrawer() {
     [memos, project?.id]
   )
 
+  // メモ欄を開いたとき、メモが1枚もなければ自動で作る(すぐ書き始められるように)
+  const autoCreated = useRef<string | null>(null)
+  useEffect(() => {
+    if (!settings.drawerOpen || !project) return
+    if (list.length > 0 || autoCreated.current === project.id) return
+    autoCreated.current = project.id
+    createMemo(project.id)
+  }, [settings.drawerOpen, project, list.length, createMemo])
+
   return (
     <div className="drawer-inner">
       <div className="drawer-head">
@@ -72,12 +81,12 @@ export default function MemoDrawer() {
       )}
 
       <div className="memo-list">
-        {list.length === 0 && (
-          <div className="memo-empty">
-            アイデアや設定、思いついたことを自由に書き留める場所です。
+        {list.length === 0 && project && (
+          <button className="memo-empty" onClick={() => createMemo(project.id)}>
+            ここを押してメモを作る
             <br />
-            「＋ 新規」でメモを追加し、「ペン」で手書きもできます。
-          </div>
+            <small>アイデアや設定、思いついたことを自由に書き留める場所です。「ペン」で手書きもできます。</small>
+          </button>
         )}
         {list.map((m) => (
           <MemoCard key={m.id} memo={m} mode={mode} />
