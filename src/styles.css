@@ -141,6 +141,12 @@ button {
   cursor: default;
 }
 
+.btn.tool {
+  font-size: 12px;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+
 .sync {
   display: inline-flex;
   align-items: center;
@@ -429,19 +435,58 @@ button {
   margin-left: 2px;
 }
 
+.subtitle-add {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: -1em 0 1.4em;
+  font-family: var(--ui-font);
+  font-size: 12px;
+  color: #c7c4bb;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.page:hover .subtitle-add,
+.subtitle-add:focus {
+  opacity: 1;
+}
+
+.subtitle-add:hover {
+  color: var(--accent);
+}
+
 .grow-wrap {
   display: grid;
 }
 
-.grow-wrap::after {
+/* メモ用: 擬似要素の鏡で高さを自動調整 */
+.memo-grow::after {
   content: attr(data-value) ' ';
   white-space: pre-wrap;
   visibility: hidden;
   overflow-wrap: anywhere;
 }
 
+/* 原稿用: 実要素の鏡(空白・改行記号の表示にも使う) */
+.grow-mirror {
+  white-space: pre-wrap;
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+  position: relative;
+  z-index: 0;
+}
+
+.grow-wrap > textarea {
+  position: relative;
+  z-index: 1;
+}
+
 .grow-wrap > textarea,
-.grow-wrap::after {
+.grow-mirror,
+.memo-grow::after {
   grid-area: 1 / 1 / 2 / 2;
   font: inherit;
   line-height: inherit;
@@ -450,6 +495,37 @@ button {
   border: none;
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+/* 印刷されない記号の表示 */
+.show-inv .inv-sp {
+  background: rgba(31, 95, 191, 0.16);
+  box-shadow: inset 0 -1px 0 rgba(31, 95, 191, 0.5);
+  border-radius: 2px;
+}
+
+.show-inv .inv-zsp {
+  box-shadow: inset 0 0 0 1px rgba(192, 57, 43, 0.5);
+  background: rgba(192, 57, 43, 0.06);
+  border-radius: 2px;
+}
+
+.show-inv .inv-tab {
+  background: rgba(30, 132, 73, 0.15);
+}
+
+.show-inv .inv-nl {
+  position: relative;
+}
+
+.show-inv .inv-nl::after {
+  content: '↵';
+  position: absolute;
+  left: 0.1em;
+  top: 0;
+  color: #9fb4d6;
+  font-family: var(--ui-font);
+  font-size: 0.8em;
 }
 
 .page-body {

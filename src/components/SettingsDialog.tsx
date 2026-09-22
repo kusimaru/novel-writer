@@ -4,24 +4,7 @@ import { signIn, signOut } from '../sync/firebase'
 import { syncNow, testGithub } from '../sync/github'
 import { applySyncSettings, stopAllSync } from '../sync'
 import type { Settings } from '../types'
-
-function download(name: string, content: string, type: string) {
-  const blob = new Blob([content], { type })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
-const stamp = () => {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`
-}
+import { downloadFile as download, exportProjectText, timestamp as stamp } from '../utils/exportText'
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const settings = useStore((s) => s.settings)
@@ -50,19 +33,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   }
 
   const exportTxt = () => {
-    if (!project) return
-    const lines: string[] = [project.title, '']
-    for (const chId of project.chapterOrder) {
-      const ch = st.chapters[chId]
-      if (!ch) continue
-      lines.push(ch.subtitle ? `${ch.title}　「${ch.subtitle}」` : ch.title, '')
-      for (const eid of ch.episodeOrder) {
-        const ep = st.episodes[eid]
-        if (!ep) continue
-        lines.push(ep.subtitle ? `${ep.title}「${ep.subtitle}」` : ep.title, '', ep.body, '', '')
-      }
-    }
-    download(`${project.title}-${stamp()}.txt`, lines.join('\n'), 'text/plain;charset=utf-8')
+    if (project) exportProjectText(project, st.chapters, st.episodes)
   }
 
   const importJson = async (file: File) => {

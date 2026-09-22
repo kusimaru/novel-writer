@@ -67,6 +67,7 @@ export interface Settings {
   penColor: string
   penWidth: number
   firebaseConfig: string // JSON string, empty = disabled
+  showInvisibles: boolean // 空白・改行などの記号を表示
   syncProvider: 'none' | 'github' | 'firebase'
   githubRepo: string // "owner/repo"
   githubBranch: string
@@ -88,6 +89,7 @@ export const defaultSettings: Settings = {
   penColor: '#2b2a28',
   penWidth: 2.5,
   firebaseConfig: '',
+  showInvisibles: false,
   syncProvider: 'none',
   githubRepo: '',
   githubBranch: 'main',

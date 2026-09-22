@@ -1,4 +1,5 @@
 import { selectCurrentProject, useStore } from '../store'
+import { exportProjectText } from '../utils/exportText'
 
 const SYNC_LABEL: Record<string, string> = {
   off: '同期オフ',
@@ -17,6 +18,8 @@ export default function TopBar({ onOpenSettings }: { onOpenSettings: () => void 
   const setSettings = useStore((s) => s.setSettings)
   const syncStatus = useStore((s) => s.syncStatus)
   const syncMessage = useStore((s) => s.syncMessage)
+  const chapters = useStore((s) => s.chapters)
+  const episodes = useStore((s) => s.episodes)
 
   return (
     <header className="topbar">
@@ -30,6 +33,21 @@ export default function TopBar({ onOpenSettings }: { onOpenSettings: () => void 
       <span className="app-name">執筆ノート</span>
       <span className="project-title">{project?.title ?? ''}</span>
       <span className="spacer" />
+      <button
+        className={'btn tool' + (settings.showInvisibles ? ' on' : '')}
+        title="全角・半角スペースや改行の記号を表示する"
+        onClick={() => setSettings({ showInvisibles: !settings.showInvisibles })}
+      >
+        ¶ 記号
+      </button>
+      <button
+        className="btn tool"
+        title="この作品の全文をテキストファイル(.txt)として保存"
+        disabled={!project}
+        onClick={() => project && exportProjectText(project, chapters, episodes)}
+      >
+        ⤓ TXT保存
+      </button>
       <span className={'sync sync-' + syncStatus} title={syncMessage} onClick={onOpenSettings}>
         <span className="dot" />
         {SYNC_LABEL[syncStatus]}
