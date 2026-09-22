@@ -71,6 +71,9 @@ export interface AppState {
   loaded: boolean
   search: SearchState
   setSearch: (patch: Partial<SearchState>) => void
+  /** 本文エディタの最後のカーソル位置(挿絵の挿入位置に使う) */
+  editorCaret: number
+  setEditorCaret: (pos: number) => void
   projects: Record<string, Project>
   chapters: Record<string, Chapter>
   episodes: Record<string, Episode>
@@ -97,7 +100,7 @@ export interface AppState {
   deleteEpisode: (id: string) => void
   moveEpisode: (episodeId: string, dir: -1 | 1) => void
 
-  createMemo: (projectId: string, episodeId?: string) => string
+  createMemo: (projectId: string, episodeId?: string, extra?: Partial<Memo>) => string
   updateMemo: (id: string, patch: Partial<Memo>) => void
   deleteMemo: (id: string) => void
   /** メモを別の話(または作品共通 = undefined)へ移す */
@@ -119,6 +122,10 @@ export const useStore = create<AppState>((set, get) => ({
   syncMessage: '',
   search: { open: false, query: '', replace: '', scope: 'episode', caseSensitive: false, current: 0, nonce: 0 },
   setSearch: (patch) => set((s) => ({ search: { ...s.search, ...patch } })),
+  editorCaret: -1,
+  setEditorCaret: (pos) => {
+    if (get().editorCaret !== pos) set({ editorCaret: pos })
+  },
 
   load: async () => {
     const [projects, chapters, episodes, memos, settingsRow] = await Promise.all([
@@ -304,10 +311,10 @@ export const useStore = create<AppState>((set, get) => ({
     get().updateEpisode(episodeId, { chapterId: target.id })
   },
 
-  createMemo: (projectId, episodeId) => {
+  createMemo: (projectId, episodeId, extra) => {
     const existing = Object.values(get().memos).filter((m) => m.projectId === projectId && (m.episodeId ?? '') === (episodeId ?? ''))
     const order = existing.reduce((mx, m) => Math.max(mx, m.order), -1) + 1
-    const memo: Memo = { id: newId(), projectId, episodeId, title: '', text: '', strokes: [], height: 320, order, updatedAt: now() }
+    const memo: Memo = { id: newId(), projectId, episodeId, title: '', text: '', strokes: [], height: 320, order, updatedAt: now(), ...extra }
     set((s) => ({ memos: { ...s.memos, [memo.id]: memo } }))
     persist('memo', memo)
     return memo.id

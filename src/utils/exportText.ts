@@ -1,4 +1,5 @@
 import type { Chapter, Episode, Project } from '../types'
+import { stripFigures } from './figures'
 
 export function downloadFile(name: string, content: string, type: string) {
   const blob = new Blob([content], { type })
@@ -28,7 +29,7 @@ export function projectToText(project: Project, chapters: Record<string, Chapter
     for (const eid of ch.episodeOrder) {
       const ep = episodes[eid]
       if (!ep) continue
-      lines.push(ep.subtitle ? `${ep.title}「${ep.subtitle}」` : ep.title, '', ep.body, '', '')
+      lines.push(ep.subtitle ? `${ep.title}「${ep.subtitle}」` : ep.title, '', stripFigures(ep.body), '', '')
     }
   }
   return lines.join('\n')

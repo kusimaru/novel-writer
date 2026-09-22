@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { selectCurrentEpisode, selectCurrentProject, useStore } from '../store'
+import { removeFigure, splitBody } from '../utils/figures'
 import { findMatches, type Match } from '../utils/search'
 
 /** 空白・改行を記号つきで描画する(show=false のときは素の文字列) */
@@ -63,8 +64,10 @@ export default function Editor() {
   const episode = useStore(selectCurrentEpisode)
   const settings = useStore((s) => s.settings)
   const search = useStore((s) => s.search)
+  const memos = useStore((s) => s.memos)
   const updateEpisode = useStore((s) => s.updateEpisode)
   const updateChapter = useStore((s) => s.updateChapter)
+  const setEditorCaret = useStore((s) => s.setEditorCaret)
   const chapter = useStore((s) => (episode ? s.chapters[episode.chapterId] : undefined))
   const project = useStore(selectCurrentProject)
   const chapters = useStore((s) => s.chapters)
@@ -74,7 +77,6 @@ export default function Editor() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const subtitleRef = useRef<HTMLInputElement>(null)
   const chSubRef = useRef<HTMLInputElement>(null)
-  const bodyRef = useRef<HTMLTextAreaElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const [editingSubtitle, setEditingSubtitle] = useState(false)
   const [editingChSub, setEditingChSub] = useState(false)
@@ -94,10 +96,14 @@ export default function Editor() {
     return e.subtitle ? `${e.title}「${e.subtitle}」` : e.title
   }
 
-  // 検索の一致箇所
+  // 本文をテキスト区間と挿絵に分解
+  const body = episode?.body ?? ''
+  const segments = useMemo(() => splitBody(body), [body])
+
+  // 検索の一致箇所(本文全体の位置)
   const matches = useMemo(
-    () => (search.open && episode ? findMatches(episode.body, search.query, search.caseSensitive) : []),
-    [search.open, search.query, search.caseSensitive, episode]
+    () => (search.open && episode ? findMatches(body, search.query, search.caseSensitive) : []),
+    [search.open, search.query, search.caseSensitive, body, episode]
   )
   const currentMatch = matches.length ? Math.min(search.current, matches.length - 1) : -1
 
@@ -106,6 +112,7 @@ export default function Editor() {
     if (!search.open) scrollRef.current?.scrollTo({ top: 0 })
     setEditingSubtitle(false)
     setEditingChSub(false)
+    setEditorCaret(-1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episode?.id])
 
@@ -120,17 +127,20 @@ export default function Editor() {
   useEffect(() => {
     if (!search.open || currentMatch < 0) return
     const m = matches[currentMatch]
-    const ta = bodyRef.current
-    if (ta && document.activeElement !== ta) {
-      try {
-        ta.setSelectionRange(m.start, m.end)
-      } catch {
-        /* ignore */
+    const seg = segments.find((s) => s.type === 'text' && m.start >= s.start && m.end <= s.end)
+    if (seg) {
+      const ta = wrapRef.current?.querySelector<HTMLTextAreaElement>(`textarea[data-start="${seg.start}"]`)
+      if (ta && document.activeElement !== ta) {
+        try {
+          ta.setSelectionRange(m.start - seg.start, m.end - seg.start)
+        } catch {
+          /* ignore */
+        }
       }
     }
     const el = wrapRef.current?.querySelector('mark.cur') as HTMLElement | null
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [search.open, search.nonce, currentMatch, matches, episode?.id])
+  }, [search.open, search.nonce, currentMatch, matches, segments, episode?.id])
 
   if (!episode) {
     return (
@@ -146,6 +156,16 @@ export default function Editor() {
       : '"Hiragino Sans", "Yu Gothic", "游ゴシック", "Noto Sans JP", Meiryo, sans-serif'
 
   const hasSubtitle = !!episode.subtitle
+  const textSegCount = segments.filter((s) => s.type === 'text').length
+
+  // 区間の編集 → 本文全体を組み立て直す
+  const editSegment = (start: number, end: number, text: string) => {
+    updateEpisode(episode.id, { body: body.slice(0, start) + text + body.slice(end) })
+  }
+  const recordCaret = (e: React.SyntheticEvent<HTMLTextAreaElement>, start: number) => {
+    const ta = e.currentTarget
+    setEditorCaret(start + ta.selectionStart)
+  }
 
   return (
     <div className="page-scroll" ref={scrollRef}>
@@ -197,19 +217,56 @@ export default function Editor() {
             ＋ サブタイトルを追加
           </button>
         )}
-        <div className="grow-wrap" ref={wrapRef}>
-          <Mirror text={episode.body} show={settings.showInvisibles} matches={matches} current={currentMatch} />
-          <textarea
-            ref={bodyRef}
-            className="page-body"
-            value={episode.body}
-            placeholder="ここに本文を書きます…"
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="off"
-            onChange={(e) => updateEpisode(episode.id, { body: e.target.value })}
-          />
+
+        <div className="body-blocks" ref={wrapRef}>
+          {segments.map((seg, i) => {
+            if (seg.type === 'image') {
+              const memo = memos[seg.memoId]
+              const occurrence = segments.slice(0, i).filter((s) => s.type === 'image' && s.memoId === seg.memoId).length
+              return (
+                <figure key={'img' + i + seg.memoId} className="page-figure">
+                  {memo?.image ? (
+                    <img src={memo.image} alt={memo.title || '挿絵'} />
+                  ) : (
+                    <div className="figure-missing">(画像が見つかりません。メモが削除された可能性があります)</div>
+                  )}
+                  {memo?.title && <figcaption>{memo.title}</figcaption>}
+                  <button
+                    className="figure-remove"
+                    title="この位置から挿絵を外す(メモの画像は残ります)"
+                    onClick={() => updateEpisode(episode.id, { body: removeFigure(body, seg.memoId, occurrence) })}
+                  >
+                    ✕ 挿絵を外す
+                  </button>
+                </figure>
+              )
+            }
+            const segMatches = matches
+              .filter((m) => m.start >= seg.start && m.end <= seg.end)
+              .map((m) => ({ start: m.start - seg.start, end: m.end - seg.start }))
+            const curLocal = currentMatch >= 0 ? segMatches.findIndex((m) => m.start + seg.start === matches[currentMatch].start) : -1
+            return (
+              <div className={'grow-wrap' + (textSegCount === 1 ? ' only' : '')} key={'t' + seg.start}>
+                <Mirror text={seg.text} show={settings.showInvisibles} matches={segMatches} current={curLocal} />
+                <textarea
+                  className="page-body"
+                  data-start={seg.start}
+                  value={seg.text}
+                  placeholder={i === 0 ? 'ここに本文を書きます…' : ''}
+                  spellCheck={false}
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  onChange={(e) => editSegment(seg.start, seg.end, e.target.value)}
+                  onSelect={(e) => recordCaret(e, seg.start)}
+                  onFocus={(e) => recordCaret(e, seg.start)}
+                  onKeyUp={(e) => recordCaret(e, seg.start)}
+                  onClick={(e) => recordCaret(e, seg.start)}
+                />
+              </div>
+            )
+          })}
         </div>
+
         <nav className="page-nav">
           {prevId ? (
             <button className="nav-btn" onClick={() => goTo(prevId)}>

@@ -46,6 +46,7 @@ export interface Memo {
   id: string
   projectId: string
   episodeId?: string // 話ごとのメモ。無いものは作品共通(旧データ)
+  image?: string // 画像メモ(縮小済み data URL)
   title: string
   text: string
   strokes: Stroke[]
