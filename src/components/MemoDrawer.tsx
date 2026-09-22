@@ -169,7 +169,7 @@ function MemoCard({ memo, mode }: { memo: Memo; mode: PenMode }) {
       {!collapsed && (
         <>
           <div className="memo-body" ref={bodyRef} style={{ minHeight: memo.height }}>
-            <div className="grow-wrap memo-grow" data-value={memo.text + '\n'}>
+            <div className="grow-wrap memo-grow" data-value={memo.text}>
               <textarea
                 className="memo-text"
                 value={memo.text}

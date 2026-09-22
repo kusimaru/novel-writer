@@ -65,7 +65,7 @@ export default function Editor() {
           placeholder="サブタイトル(空欄なら表示されません)"
           onChange={(e) => updateEpisode(episode.id, { subtitle: e.target.value })}
         />
-        <div className="grow-wrap" data-value={episode.body + '\n'}>
+        <div className="grow-wrap" data-value={episode.body}>
           <textarea
             className="page-body"
             value={episode.body}

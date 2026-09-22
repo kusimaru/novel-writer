@@ -729,6 +729,9 @@ button {
 .memo-grow {
   grid-area: 1 / 1;
   min-width: 0;
+  /* 文字欄と鏡(::after)が同じ行間・字サイズを継承するようにここで指定 */
+  font-size: 14px;
+  line-height: 1.75;
 }
 
 .memo-grow > textarea,
@@ -742,8 +745,6 @@ button {
   resize: none;
   outline: none;
   background: transparent;
-  font-size: 14px;
-  line-height: 1.75;
   padding: 10px 12px !important;
   overflow: hidden;
   height: 100%;
@@ -752,8 +753,6 @@ button {
 
 .memo-grow::after {
   padding: 10px 12px !important;
-  font-size: 14px;
-  line-height: 1.75;
 }
 
 .hw-canvas {
