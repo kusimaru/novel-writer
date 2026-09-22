@@ -649,7 +649,7 @@ button {
 
 .memo-card {
   min-width: 0;
-  overflow: hidden;
+  flex-shrink: 0; /* 一覧が長くなってもカードを縮めない(一覧側をスクロール) */
   background: #fffdf5;
   border: 1px solid #ece7d2;
   border-radius: 8px;
@@ -708,6 +708,7 @@ button {
   line-height: 1.75;
   padding: 10px 12px !important;
   overflow: hidden;
+  height: 100%;
   min-height: 100%;
 }
 
