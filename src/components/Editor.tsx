@@ -29,12 +29,21 @@ export default function Editor() {
   return (
     <div className="page-scroll" ref={scrollRef}>
       <div className="page" style={{ fontFamily, fontSize: settings.fontSize, lineHeight: settings.lineHeight }}>
-        <div className="page-chapter">{chapter?.title}</div>
+        <div className="page-chapter">
+          {chapter?.title}
+          {chapter?.subtitle ? `　${chapter.subtitle}` : ''}
+        </div>
         <input
           className="page-title"
           value={episode.title}
           placeholder="話のタイトル"
           onChange={(e) => updateEpisode(episode.id, { title: e.target.value })}
+        />
+        <input
+          className="page-subtitle"
+          value={episode.subtitle ?? ''}
+          placeholder="サブタイトル(空欄なら表示されません)"
+          onChange={(e) => updateEpisode(episode.id, { subtitle: e.target.value })}
         />
         <div className="grow-wrap" data-value={episode.body + '\n'}>
           <textarea

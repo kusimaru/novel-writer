@@ -55,11 +55,11 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
     for (const chId of project.chapterOrder) {
       const ch = st.chapters[chId]
       if (!ch) continue
-      lines.push(ch.title, '')
+      lines.push(ch.subtitle ? `${ch.title}　「${ch.subtitle}」` : ch.title, '')
       for (const eid of ch.episodeOrder) {
         const ep = st.episodes[eid]
         if (!ep) continue
-        lines.push(ep.title, '', ep.body, '', '')
+        lines.push(ep.subtitle ? `${ep.title}「${ep.subtitle}」` : ep.title, '', ep.body, '', '')
       }
     }
     download(`${project.title}-${stamp()}.txt`, lines.join('\n'), 'text/plain;charset=utf-8')

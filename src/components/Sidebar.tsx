@@ -18,6 +18,10 @@ export default function Sidebar() {
     const t = window.prompt('名前を変更', current)
     if (t !== null && t.trim()) apply(t.trim())
   }
+  const subtitle = (current: string | undefined, apply: (t: string) => void) => {
+    const t = window.prompt('サブタイトル(空欄にすると消えます)', current ?? '')
+    if (t !== null) apply(t.trim())
+  }
 
   return (
     <aside className={'sidebar' + (settings.sidebarOpen ? ' open' : '')}>
@@ -71,12 +75,14 @@ export default function Sidebar() {
               <div className="chapter-row">
                 <span className="chapter-title" onDoubleClick={() => rename(ch.title, (t) => st.updateChapter(ch.id, { title: t }))}>
                   {ch.title}
+                  {ch.subtitle && <span className="subtitle">「{ch.subtitle}」</span>}
                 </span>
                 <span className="count">{formatNumber(chCount)}</span>
                 <Menu
                   items={[
                     { label: '話を追加', onClick: () => selectEpisode(st.createEpisode(ch.id)) },
                     { label: '章の名前を変更', onClick: () => rename(ch.title, (t) => st.updateChapter(ch.id, { title: t })) },
+                    { label: 'サブタイトルを設定', onClick: () => subtitle(ch.subtitle, (t) => st.updateChapter(ch.id, { subtitle: t })) },
                     { label: '上へ移動', disabled: ci === 0, onClick: () => st.moveChapter(project.id, ch.id, -1) },
                     { label: '下へ移動', disabled: ci === project.chapterOrder.length - 1, onClick: () => st.moveChapter(project.id, ch.id, 1) },
                     {
@@ -99,11 +105,15 @@ export default function Sidebar() {
                     className={'episode-row' + (active ? ' active' : '')}
                     onClick={() => selectEpisode(ep.id)}
                   >
-                    <span className="episode-title">{ep.title || '(無題)'}</span>
+                    <span className="episode-title">
+                      {ep.title || '(無題)'}
+                      {ep.subtitle && <span className="subtitle">「{ep.subtitle}」</span>}
+                    </span>
                     <span className="count">{formatNumber(countChars(ep.body, settings.countMode))}</span>
                     <Menu
                       items={[
                         { label: '名前を変更', onClick: () => rename(ep.title, (t) => st.updateEpisode(ep.id, { title: t })) },
+                        { label: 'サブタイトルを設定', onClick: () => subtitle(ep.subtitle, (t) => st.updateEpisode(ep.id, { subtitle: t })) },
                         { label: '上へ移動', disabled: ei === 0 && ci === 0, onClick: () => st.moveEpisode(ep.id, -1) },
                         {
                           label: '下へ移動',

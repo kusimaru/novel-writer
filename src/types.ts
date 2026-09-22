@@ -24,6 +24,7 @@ export interface Chapter {
   id: string
   projectId: string
   title: string
+  subtitle?: string
   episodeOrder: string[]
   updatedAt: number
   deleted?: boolean
@@ -34,6 +35,7 @@ export interface Episode {
   projectId: string
   chapterId: string
   title: string
+  subtitle?: string
   body: string
   updatedAt: number
   deleted?: boolean
