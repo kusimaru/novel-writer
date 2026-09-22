@@ -97,7 +97,7 @@ export interface AppState {
   deleteEpisode: (id: string) => void
   moveEpisode: (episodeId: string, dir: -1 | 1) => void
 
-  createMemo: (projectId: string) => string
+  createMemo: (projectId: string, episodeId?: string) => string
   updateMemo: (id: string, patch: Partial<Memo>) => void
   deleteMemo: (id: string) => void
 
@@ -263,6 +263,9 @@ export const useStore = create<AppState>((set, get) => ({
   deleteEpisode: (id) => {
     const e = get().episodes[id]
     if (!e) return
+    Object.values(get().memos)
+      .filter((m) => m.episodeId === id)
+      .forEach((m) => get().deleteMemo(m.id))
     const rest = { ...get().episodes }
     delete rest[id]
     set({ episodes: rest })
@@ -299,10 +302,10 @@ export const useStore = create<AppState>((set, get) => ({
     get().updateEpisode(episodeId, { chapterId: target.id })
   },
 
-  createMemo: (projectId) => {
-    const existing = Object.values(get().memos).filter((m) => m.projectId === projectId)
+  createMemo: (projectId, episodeId) => {
+    const existing = Object.values(get().memos).filter((m) => m.projectId === projectId && (m.episodeId ?? '') === (episodeId ?? ''))
     const order = existing.reduce((mx, m) => Math.max(mx, m.order), -1) + 1
-    const memo: Memo = { id: newId(), projectId, title: '', text: '', strokes: [], height: 320, order, updatedAt: now() }
+    const memo: Memo = { id: newId(), projectId, episodeId, title: '', text: '', strokes: [], height: 320, order, updatedAt: now() }
     set((s) => ({ memos: { ...s.memos, [memo.id]: memo } }))
     persist('memo', memo)
     return memo.id

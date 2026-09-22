@@ -45,6 +45,7 @@ export interface Episode {
 export interface Memo {
   id: string
   projectId: string
+  episodeId?: string // 話ごとのメモ。無いものは作品共通(旧データ)
   title: string
   text: string
   strokes: Stroke[]
