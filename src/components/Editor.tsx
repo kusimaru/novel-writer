@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { selectCurrentEpisode, selectCurrentProject, useStore } from '../store'
-import { removeFigure, splitBody } from '../utils/figures'
+import { MIN_FIGURE_WIDTH, removeFigure, setFigureWidth, splitBody } from '../utils/figures'
 import { findMatches, type Match } from '../utils/search'
 
 /** 空白・改行を記号つきで描画する(show=false のときは素の文字列) */
@@ -223,10 +223,37 @@ export default function Editor() {
             if (seg.type === 'image') {
               const memo = memos[seg.memoId]
               const occurrence = segments.slice(0, i).filter((s) => s.type === 'image' && s.memoId === seg.memoId).length
+              // 右下のつまみをドラッグして幅(%)を変える。幅は本文の目印に記録する
+              const onResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+                e.preventDefault()
+                const handle = e.currentTarget
+                const fig = handle.parentElement as HTMLElement
+                const container = wrapRef.current!
+                handle.setPointerCapture(e.pointerId)
+                let pct = seg.width
+                const move = (ev: PointerEvent) => {
+                  const cw = container.getBoundingClientRect().width
+                  const r = fig.getBoundingClientRect()
+                  const centerX = r.left + r.width / 2
+                  pct = Math.round(Math.max(MIN_FIGURE_WIDTH, Math.min(100, ((ev.clientX - centerX) * 2 * 100) / cw)))
+                  fig.style.width = pct + '%'
+                  fig.dataset.pct = String(pct)
+                }
+                const up = () => {
+                  handle.removeEventListener('pointermove', move)
+                  handle.removeEventListener('pointerup', up)
+                  handle.removeEventListener('pointercancel', up)
+                  delete fig.dataset.pct
+                  if (pct !== seg.width) updateEpisode(episode.id, { body: setFigureWidth(body, seg.memoId, occurrence, pct) })
+                }
+                handle.addEventListener('pointermove', move)
+                handle.addEventListener('pointerup', up)
+                handle.addEventListener('pointercancel', up)
+              }
               return (
-                <figure key={'img' + i + seg.memoId} className="page-figure">
+                <figure key={'img' + i + seg.memoId} className="page-figure" style={{ width: seg.width + '%' }}>
                   {memo?.image ? (
-                    <img src={memo.image} alt={memo.title || '挿絵'} />
+                    <img src={memo.image} alt={memo.title || '挿絵'} draggable={false} />
                   ) : (
                     <div className="figure-missing">(画像が見つかりません。メモが削除された可能性があります)</div>
                   )}
@@ -238,6 +265,7 @@ export default function Editor() {
                   >
                     ✕ 挿絵を外す
                   </button>
+                  {memo?.image && <div className="figure-resize" title="ドラッグして大きさを変更" onPointerDown={onResizeStart} />}
                 </figure>
               )
             }

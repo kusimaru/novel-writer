@@ -74,7 +74,7 @@ export default function MemoDrawer() {
       if (!f.type.startsWith('image/')) continue
       try {
         const data = await fileToDataUrl(f)
-        createMemo(project.id, episode?.id, { image: data, height: 80, title: f.name.replace(/\.[^.]+$/, '') })
+        createMemo(project.id, episode?.id, { image: data, height: 80 })
       } catch (e) {
         window.alert('画像を読み込めませんでした: ' + f.name)
       }

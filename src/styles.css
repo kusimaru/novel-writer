@@ -1002,18 +1002,69 @@ button {
 }
 
 .page-figure {
-  margin: 0.6em 0;
+  margin: 0.6em auto;
   position: relative;
   text-align: center;
   font-family: var(--ui-font);
+  max-width: 100%;
 }
 
 .page-figure img {
-  max-width: 100%;
-  max-height: 70vh;
+  display: block;
+  width: 100%;
   height: auto;
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.figure-resize {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--accent);
+  cursor: nwse-resize;
+  touch-action: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.page-figure:hover .figure-resize,
+.page-figure:active .figure-resize {
+  opacity: 1;
+}
+
+.page-figure[data-pct]::after {
+  content: attr(data-pct) '%';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.page-figure figcaption {
+  font-size: 0.8em;
+  color: var(--muted);
+  margin-top: 0.4em;
+}
+
+@media (pointer: coarse) {
+  .figure-resize {
+    opacity: 0.85;
+  }
 }
 
 .page-figure figcaption {
