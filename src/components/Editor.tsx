@@ -1,6 +1,45 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { selectCurrentEpisode, selectCurrentProject, useStore } from '../store'
-import { MIN_FIGURE_WIDTH, removeFigure, setFigureWidth, splitBody } from '../utils/figures'
+import { MIN_FIGURE_WIDTH, moveFigure, removeFigure, setFigureWidth, splitBody, type Segment } from '../utils/figures'
+
+/** 鏡(mirror)要素内の (node, offset) を、鏡のテキスト先頭からの文字位置に変換 */
+function offsetInMirror(mirror: HTMLElement, node: Node, nodeOffset: number): number {
+  let total = 0
+  const walker = document.createTreeWalker(mirror, NodeFilter.SHOW_TEXT)
+  let cur = walker.nextNode()
+  while (cur) {
+    if (cur === node) return total + nodeOffset
+    total += (cur.textContent ?? '').length
+    cur = walker.nextNode()
+  }
+  // node がテキストノードでない場合(要素そのもの)は、その要素の先頭とみなす
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    let t = 0
+    const w2 = document.createTreeWalker(mirror, NodeFilter.SHOW_TEXT)
+    let c = w2.nextNode()
+    while (c) {
+      if (node.contains(c) || (node as Element).compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING) return t
+      t += (c.textContent ?? '').length
+      c = w2.nextNode()
+    }
+    return t
+  }
+  return total
+}
+
+/** 座標から (node, offset) を得る(ブラウザ差を吸収) */
+function caretFromPoint(x: number, y: number): { node: Node; offset: number } | null {
+  const d = document as any
+  if (typeof d.caretPositionFromPoint === 'function') {
+    const p = d.caretPositionFromPoint(x, y)
+    return p ? { node: p.offsetNode, offset: p.offset } : null
+  }
+  if (typeof d.caretRangeFromPoint === 'function') {
+    const r = d.caretRangeFromPoint(x, y)
+    return r ? { node: r.startContainer, offset: r.startOffset } : null
+  }
+  return null
+}
 import { findMatches, type Match } from '../utils/search'
 
 /** 空白・改行を記号つきで描画する(show=false のときは素の文字列) */
@@ -80,6 +119,9 @@ export default function Editor() {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [editingSubtitle, setEditingSubtitle] = useState(false)
   const [editingChSub, setEditingChSub] = useState(false)
+  // 挿絵のドラッグ移動: 挿入先を示す線の位置(body-blocks 内の相対座標)
+  const [dropLine, setDropLine] = useState<{ top: number } | null>(null)
+  const [figDragging, setFigDragging] = useState(false)
 
   // 作品内の話を章順・話順に並べた一覧(前後の話への移動用)
   const flat = useMemo(
@@ -167,6 +209,109 @@ export default function Editor() {
     setEditorCaret(start + ta.selectionStart)
   }
 
+  /** 座標から「本文のどこに挿絵を置くか」を決める。戻り値は本文内の位置と線の表示位置 */
+  const dropTargetAt = (clientX: number, clientY: number, dragged: HTMLElement): { pos: number; lineTop: number } | null => {
+    const container = wrapRef.current
+    if (!container) return null
+    const crect = container.getBoundingClientRect()
+    if (clientY < crect.top - 20 || clientY > crect.bottom + 20) return null
+    const x = Math.min(Math.max(clientX, crect.left + 2), crect.right - 2)
+    const el = document.elementFromPoint(x, clientY) as HTMLElement | null
+    if (!el || !container.contains(el)) return null
+    if (dragged.contains(el)) return null
+    // 別の挿絵の上: その前か後ろ
+    const fig = el.closest('.page-figure') as HTMLElement | null
+    if (fig) {
+      const r = fig.getBoundingClientRect()
+      const before = clientY < r.top + r.height / 2
+      const start = Number(fig.dataset.start)
+      const end = Number(fig.dataset.end)
+      return { pos: before ? start : end, lineTop: (before ? r.top : r.bottom) - crect.top }
+    }
+    // テキスト区間の上: 鏡から文字位置を求め、行の前か後ろに丸める
+    const wrap = el.closest('.grow-wrap') as HTMLElement | null
+    if (!wrap) return null
+    const mirror = wrap.querySelector('.grow-mirror') as HTMLElement | null
+    const segStart = Number(wrap.dataset.start)
+    const segText = wrap.querySelector('textarea')?.value ?? ''
+    if (!mirror) return null
+    const caret = caretFromPoint(x, clientY)
+    let off = caret ? offsetInMirror(mirror, caret.node, caret.offset) : segText.length
+    off = Math.max(0, Math.min(off, segText.length))
+    const ls = segText.lastIndexOf('\n', off - 1) + 1
+    let le = segText.indexOf('\n', off)
+    if (le < 0) le = segText.length
+    // 行の矩形を測って上下どちらに近いか判定
+    let lineTop = clientY - crect.top
+    let before = true
+    try {
+      const range = document.createRange()
+      if (caret && caret.node.nodeType === Node.TEXT_NODE) {
+        range.setStart(caret.node, caret.offset)
+        range.setEnd(caret.node, caret.offset)
+        const r = range.getBoundingClientRect()
+        if (r.height > 0) {
+          before = clientY < r.top + r.height / 2
+          lineTop = (before ? r.top : r.bottom) - crect.top
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    const pos = segStart + (before ? ls : le)
+    return { pos, lineTop }
+  }
+
+  /** 挿絵をドラッグして別の位置へ動かす */
+  const onFigureDragStart = (e: React.PointerEvent<HTMLImageElement>, seg: Extract<Segment, { type: 'image' }>, occurrence: number) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    e.preventDefault()
+    const img = e.currentTarget
+    const fig = img.closest('.page-figure') as HTMLElement
+    const startX = e.clientX
+    const startY = e.clientY
+    let started = false
+    let target: { pos: number; lineTop: number } | null = null
+    img.setPointerCapture(e.pointerId)
+    const move = (ev: PointerEvent) => {
+      if (!started) {
+        if (Math.abs(ev.clientX - startX) < 5 && Math.abs(ev.clientY - startY) < 5) return
+        started = true
+        setFigDragging(true)
+      }
+      target = dropTargetAt(ev.clientX, ev.clientY, fig)
+      setDropLine(target ? { top: target.lineTop } : null)
+      // 端に近づいたら原稿をスクロール
+      const sc = scrollRef.current
+      if (sc) {
+        const r = sc.getBoundingClientRect()
+        if (ev.clientY < r.top + 50) sc.scrollTop -= 10
+        else if (ev.clientY > r.bottom - 50) sc.scrollTop += 10
+      }
+    }
+    const up = (ev: PointerEvent) => {
+      img.removeEventListener('pointermove', move)
+      img.removeEventListener('pointerup', up)
+      img.removeEventListener('pointercancel', up)
+      // 途中の移動イベントが来ない環境でも、離した位置で判定する
+      if (ev.type === 'pointerup' && (Math.abs(ev.clientX - startX) >= 5 || Math.abs(ev.clientY - startY) >= 5)) {
+        started = true
+        const container = wrapRef.current
+        container?.classList.add('fig-dragging')
+        target = dropTargetAt(ev.clientX, ev.clientY, fig)
+        container?.classList.remove('fig-dragging')
+      }
+      setFigDragging(false)
+      setDropLine(null)
+      if (!started || !target) return
+      if (target.pos >= seg.start && target.pos <= seg.end) return // 同じ場所
+      updateEpisode(episode.id, { body: moveFigure(body, seg.memoId, occurrence, target.pos, seg.width) })
+    }
+    img.addEventListener('pointermove', move)
+    img.addEventListener('pointerup', up)
+    img.addEventListener('pointercancel', up)
+  }
+
   return (
     <div className="page-scroll" ref={scrollRef}>
       <div className="page" style={{ fontFamily, fontSize: settings.fontSize, lineHeight: settings.lineHeight }}>
@@ -218,7 +363,8 @@ export default function Editor() {
           </button>
         )}
 
-        <div className="body-blocks" ref={wrapRef}>
+        <div className={'body-blocks' + (figDragging ? ' fig-dragging' : '')} ref={wrapRef}>
+          {dropLine && <div className="fig-drop-line" style={{ top: dropLine.top }} />}
           {segments.map((seg, i) => {
             if (seg.type === 'image') {
               const memo = memos[seg.memoId]
@@ -251,9 +397,21 @@ export default function Editor() {
                 handle.addEventListener('pointercancel', up)
               }
               return (
-                <figure key={'img' + i + seg.memoId} className="page-figure" style={{ width: seg.width + '%' }}>
+                <figure
+                  key={'img' + i + seg.memoId}
+                  className="page-figure"
+                  style={{ width: seg.width + '%' }}
+                  data-start={seg.start}
+                  data-end={seg.end}
+                >
                   {memo?.image ? (
-                    <img src={memo.image} alt={memo.title || '挿絵'} draggable={false} />
+                    <img
+                      src={memo.image}
+                      alt={memo.title || '挿絵'}
+                      draggable={false}
+                      title="ドラッグして位置を移動"
+                      onPointerDown={(e) => onFigureDragStart(e, seg, occurrence)}
+                    />
                   ) : (
                     <div className="figure-missing">(画像が見つかりません。メモが削除された可能性があります)</div>
                   )}
@@ -274,7 +432,7 @@ export default function Editor() {
               .map((m) => ({ start: m.start - seg.start, end: m.end - seg.start }))
             const curLocal = currentMatch >= 0 ? segMatches.findIndex((m) => m.start + seg.start === matches[currentMatch].start) : -1
             return (
-              <div className={'grow-wrap' + (textSegCount === 1 ? ' only' : '')} key={'t' + seg.start}>
+              <div className={'grow-wrap' + (textSegCount === 1 ? ' only' : '')} key={'t' + seg.start} data-start={seg.start} data-end={seg.end}>
                 <Mirror text={seg.text} show={settings.showInvisibles} matches={segMatches} current={curLocal} />
                 <textarea
                   className="page-body"

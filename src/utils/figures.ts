@@ -29,13 +29,38 @@ export function splitBody(body: string): Segment[] {
   return out
 }
 
-export function insertFigure(body: string, pos: number, memoId: string): string {
+export function figureMarker(memoId: string, width = 100): string {
+  const w = Math.round(Math.max(MIN_FIGURE_WIDTH, Math.min(100, width)))
+  return w >= 100 ? `【挿絵:${memoId}】` : `【挿絵:${memoId}:${w}】`
+}
+
+export function insertFigure(body: string, pos: number, memoId: string, width = 100): string {
   const p = Math.max(0, Math.min(pos, body.length))
   const before = body.slice(0, p)
   const after = body.slice(p)
   const pre = before.length > 0 && !before.endsWith('\n') ? '\n' : ''
   const post = after.startsWith('\n') ? '' : '\n'
-  return before + pre + `【挿絵:${memoId}】` + post + after
+  return before + pre + figureMarker(memoId, width) + post + after
+}
+
+/** n番目のこのメモの挿絵を別の位置(本文内の文字位置)へ移す */
+export function moveFigure(body: string, memoId: string, occurrence: number, toPos: number, width = 100): string {
+  const re = new RegExp(`【挿絵:${memoId}(?::\\d{1,3})?】\\n?`, 'g')
+  let i = 0
+  let removedAt = -1
+  let removedLen = 0
+  const without = body.replace(re, (m: string, offset: number) => {
+    if (i++ === occurrence) {
+      removedAt = offset
+      removedLen = m.length
+      return ''
+    }
+    return m
+  })
+  if (removedAt < 0) return body
+  let pos = toPos
+  if (pos > removedAt) pos = Math.max(removedAt, pos - removedLen)
+  return insertFigure(without, pos, memoId, width)
 }
 
 function markerRe(memoId: string) {

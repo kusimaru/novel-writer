@@ -995,6 +995,37 @@ button {
 .body-blocks {
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* 挿絵のドラッグ中: 文字欄を透過させて鏡から位置を取る */
+.body-blocks.fig-dragging textarea {
+  pointer-events: none;
+}
+
+.body-blocks.fig-dragging .grow-mirror {
+  pointer-events: auto;
+}
+
+.body-blocks.fig-dragging .page-figure img {
+  cursor: grabbing;
+}
+
+.fig-drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  margin-top: -1px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.page-figure img {
+  cursor: grab;
+  touch-action: none;
 }
 
 .body-blocks .grow-wrap:not(.only) > textarea {
