@@ -64,12 +64,13 @@ export function moveFigure(body: string, memoId: string, occurrence: number, toP
 }
 
 function markerRe(memoId: string) {
-  return new RegExp(`【挿絵:${memoId}(?::\d{1,3})?】`, 'g')
+  return new RegExp('【挿絵:' + memoId + '(?::[0-9]{1,3})?】', 'g')
 }
 
 /** n番目(0始まり)のこのメモの挿絵を取り除く */
 export function removeFigure(body: string, memoId: string, occurrence = 0): string {
-  const re = new RegExp(`【挿絵:${memoId}(?::\d{1,3})?】\n?`, 'g')
+  // 改行は正規表現の \n ではなく実際の改行文字で書く(エスケープ崩れ防止)
+  const re = new RegExp('【挿絵:' + memoId + '(?::[0-9]{1,3})?】' + '\n' + '?', 'g')
   let i = 0
   return body.replace(re, (m) => (i++ === occurrence ? '' : m))
 }
